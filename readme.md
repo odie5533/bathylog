@@ -3,7 +3,7 @@
 A web app for charting underwater waypoints by bearing and distance. Built with Subnautica-style exploration in mind.
 Plot bases, wrecks, caves, resources, and hazards relative to known points.
 
-<p align="center">Live at <a href="https://bathylog.top">bathylog.top</a></p>
+<p align="center">Live at <a href="https://odie5533.github.io/bathylog/">odie5533.github.io/bathylog</a></p>
 
 ![BathyLog screenshot](screenshot.png)
 
