@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BathyLog</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #050e1c;
+    color: #e0f0ff;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #app { display: flex; height: 100vh; }
+  #sidebar {
+    width: 380px;
+    background: #0a1929;
+    border-right: 1px solid #1e3a5f;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #map-container {
+    flex: 1;
+    position: relative;
+    background: #061523;
+    overflow: hidden;
+  }
+  #map { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #map.dragging { cursor: grabbing; }
+  h1 {
+    font-size: 16px;
+    color: #4dd0e1;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #1e3a5f;
+    padding-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .gh-link {
+    color: #7ba6c8;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.15s;
+  }
+  .gh-link:hover { color: #4dd0e1; }
+  .gh-link svg { display: block; }
+  h2 {
+    font-size: 11px;
+    color: #4dd0e1;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  h2 .badge {
+    background: #d4863a;
+    color: #050e1c;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .form-section {
+    background: #0d1f33;
+    border: 1px solid #1e3a5f;
+    border-radius: 4px;
+    padding: 12px;
+    transition: border-color 0.2s;
+  }
+  .form-section.editing { border-color: #d4863a; }
+  label {
+    display: block;
+    font-size: 10px;
+    color: #7ba6c8;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+    margin-top: 10px;
+    font-weight: 500;
+  }
+  label:first-child { margin-top: 0; }
+  input, select, textarea {
+    width: 100%;
+    background: #061523;
+    border: 1px solid #1e3a5f;
+    color: #e0f0ff;
+    padding: 7px 9px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #4dd0e1;
+    background: #0a1d33;
+  }
+  textarea { resize: vertical; min-height: 40px; }
+  .radio-group { display: flex; gap: 6px; margin-top: 4px; }
+  .radio-option {
+    flex: 1;
+    background: #061523;
+    border: 1px solid #1e3a5f;
+    padding: 8px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 11px;
+    transition: all 0.15s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+  }
+  .radio-option:hover { border-color: #4dd0e1; }
+  .radio-option.active {
+    background: #143052;
+    border-color: #4dd0e1;
+    color: #4dd0e1;
+  }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  button {
+    background: #1976a3;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    width: 100%;
+    margin-top: 14px;
+    transition: background 0.15s;
+  }
+  button:hover { background: #2089bf; }
+  button.small {
+    width: auto;
+    padding: 4px 10px;
+    font-size: 10px;
+    margin-top: 0;
+  }
+  button.danger { background: #8b3a3a; }
+  button.danger:hover { background: #a04545; }
+  button.secondary { background: #3a4a5e; }
+  button.secondary:hover { background: #4a5e76; }
+  button.warn { background: #d4863a; color: #050e1c; }
+  button.warn:hover { background: #e0974f; }
+  .button-row { display: flex; gap: 8px; }
+  .button-row > * { flex: 1; }
+  .waypoint-list { display: flex; flex-direction: column; gap: 6px; }
+  .waypoint-item {
+    background: #0d1f33;
+    border: 1px solid #1e3a5f;
+    border-radius: 3px;
+    padding: 9px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .waypoint-item:hover { border-color: #4dd0e1; }
+  .waypoint-item.selected {
+    border-color: #4dd0e1;
+    background: #143052;
+  }
+  .waypoint-item.editing {
+    border-color: #d4863a;
+    background: #1a2230;
+  }
+  .wp-name {
+    font-weight: 600;
+    color: #e0f0ff;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wp-icon {
+    font-size: 14px;
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+  }
+  .wp-meta { color: #7ba6c8; font-size: 11px; line-height: 1.4; }
+  .wp-notes { margin-top: 4px; color: #a8c4dc; font-style: italic; white-space: pre-line; }
+  .wp-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .empty {
+    color: #4a6680;
+    font-size: 12px;
+    text-align: center;
+    padding: 16px 12px;
+    font-style: italic;
+    border: 1px dashed #1e3a5f;
+    border-radius: 3px;
+  }
+  #map-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(13, 31, 51, 0.92);
+    border: 1px solid #1e3a5f;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #7ba6c8;
+    backdrop-filter: blur(4px);
+  }
+  #map-controls .btn-row { display: flex; gap: 4px; margin-bottom: 6px; }
+  #map-controls button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0;
+    font-size: 16px;
+    background: #1e3a5f;
+  }
+  #map-controls button:hover { background: #2a4f7a; }
+  #coord-display {
+    font-family: monospace;
+    font-size: 11px;
+    text-align: center;
+    color: #4dd0e1;
+    padding: 4px;
+  }
+  .data-actions { display: flex; gap: 6px; }
+  .data-actions button {
+    margin-top: 0;
+    font-size: 10px;
+    padding: 7px 4px;
+  }
+  .help-text {
+    font-size: 10px;
+    color: #4a6680;
+    line-height: 1.4;
+    margin-top: 6px;
+    font-style: italic;
+  }
+  @media (max-width: 768px) {
+    body { overflow: auto; height: auto; }
+    #app { flex-direction: column; height: auto; min-height: 100vh; }
+    #sidebar {
+      width: 100%;
+      max-height: 55vh;
+      border-right: none;
+      border-bottom: 1px solid #1e3a5f;
+    }
+    #map-container { min-height: 45vh; flex: 1 0 45vh; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <h1>
+      <span>◊ BathyLog</span>
+      <a class="gh-link" href="https://github.com/odie5533/bathylog" target="_blank" rel="noopener" title="Source on GitHub" aria-label="Source on GitHub">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      </a>
+    </h1>
+
+    <div class="form-section" id="form-section">
+      <h2>
+        <span id="form-title">Add Waypoint</span>
+        <span class="badge" id="edit-badge" style="display:none">EDITING</span>
+      </h2>
+      <form id="add-form">
+        <label>Name</label>
+        <input type="text" id="wp-name" required placeholder="e.g. Base 1, Wreck, Ridge" autocomplete="off">
+
+        <label>Bearing Direction</label>
+        <div class="radio-group">
+          <div class="radio-option active" data-dir="from_ref_to_here" id="dir-a">Ref → New</div>
+          <div class="radio-option" data-dir="from_here_to_ref" id="dir-b">New → Ref</div>
+        </div>
+        <div class="help-text">Which way did you measure the bearing?</div>
+
+        <label>Reference Point</label>
+        <select id="wp-ref" required></select>
+
+        <div class="row">
+          <div>
+            <label>Bearing (°)</label>
+            <input type="number" id="wp-bearing" min="0" max="360" step="0.1" required>
+          </div>
+          <div>
+            <label>Distance (m)</label>
+            <input type="number" id="wp-distance" min="0" step="0.1" required>
+          </div>
+        </div>
+
+        <label>Type</label>
+        <select id="wp-type">
+          <option value="other">● Other</option>
+          <option value="base">■ Base</option>
+          <option value="wreck">◆ Wreck</option>
+          <option value="cave">▼ Cave / Entrance</option>
+          <option value="resource">⬢ Resource</option>
+          <option value="landmark">★ Landmark</option>
+          <option value="hazard">▲ Hazard</option>
+        </select>
+
+        <label>Depth (m, optional)</label>
+        <input type="number" id="wp-depth" min="0" step="1" placeholder="e.g. 50">
+
+        <label>Notes (optional)</label>
+        <textarea id="wp-notes" rows="2" placeholder="What's here? Hazards? Resources?"></textarea>
+
+        <div class="button-row">
+          <button type="submit" id="submit-btn">Plot Waypoint</button>
+          <button type="button" id="cancel-btn" class="secondary" style="display:none">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div>
+      <h2>Waypoints</h2>
+      <div id="waypoint-list" class="waypoint-list"></div>
+    </div>
+
+    <div class="form-section">
+      <h2>Data</h2>
+      <div class="data-actions">
+        <button id="export-btn">Export</button>
+        <button id="import-btn">Import</button>
+        <button class="danger" id="clear-btn">Clear</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+      <div class="help-text">Data auto-saves to this browser. Export to back up.</div>
+    </div>
+  </div>
+
+  <div id="map-container">
+    <svg id="map"></svg>
+    <div id="map-controls">
+      <div class="btn-row">
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="zoom-out" title="Zoom out">−</button>
+        <button id="zoom-fit" title="Fit all points">⊡</button>
+        <button id="zoom-reset" title="Center on Lifepod">⌖</button>
+      </div>
+      <div id="coord-display">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// @ts-check
+/** @typedef {'base'|'wreck'|'cave'|'resource'|'landmark'|'hazard'|'other'} WaypointType */
+/** @typedef {WaypointType|'origin'} PointType */
+/** @typedef {'from_ref_to_here'|'from_here_to_ref'} BearingDirection */
+/**
+ * @typedef {Object} Waypoint
+ * @property {string} id
+ * @property {string} name
+ * @property {number} x
+ * @property {number} y
+ * @property {number|null} depth
+ * @property {string} notes
+ * @property {WaypointType} type
+ * @property {string} color
+ * @property {string} refId
+ * @property {number} refBearing
+ * @property {number} refDistance
+ * @property {BearingDirection} refDirection
+ */
+/**
+ * @typedef {Object} Point
+ * @property {string} id
+ * @property {string} name
+ * @property {number} x
+ * @property {number} y
+ * @property {string} color
+ * @property {PointType} type
+ * @property {number|null} [depth]
+ */
+/** @typedef {{ centerX: number, centerY: number, scale: number }} View */
+/**
+ * @typedef {Object} WaypointInput
+ * @property {string} name
+ * @property {string} refId
+ * @property {BearingDirection} direction
+ * @property {number} bearing
+ * @property {number} distance
+ * @property {WaypointType} type
+ * @property {number|null} depth
+ * @property {string} notes
+ */
+
+/** @param {string} id @returns {HTMLInputElement} */
+const $input = (id) => /** @type {HTMLInputElement} */ (document.getElementById(id));
+/** @param {string} id @returns {HTMLSelectElement} */
+const $select = (id) => /** @type {HTMLSelectElement} */ (document.getElementById(id));
+/** @param {string} id @returns {HTMLTextAreaElement} */
+const $textarea = (id) => /** @type {HTMLTextAreaElement} */ (document.getElementById(id));
+/** @param {string} id @returns {HTMLFormElement} */
+const $form = (id) => /** @type {HTMLFormElement} */ (document.getElementById(id));
+/** @param {string} id @returns {SVGSVGElement} */
+const $svg = (id) => /** @type {SVGSVGElement} */ (/** @type {unknown} */ (document.getElementById(id)));
+/** @param {string} id @returns {HTMLElement} */
+const $el = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
+
+const STORAGE_KEY = 'bathylog_v1';
+const SCALE_MIN = 0.005;
+const SCALE_MAX = 50;
+const LIFEPOD_ID = 'lifepod';
+/** @type {Point} */
+const LIFEPOD = { id: LIFEPOD_ID, name: 'Lifepod', x: 0, y: 0, color: '#fbbf24', type: 'origin' };
+
+const TYPE_ICONS = {
+  other: '●',
+  base: '■',
+  wreck: '◆',
+  cave: '▼',
+  resource: '⬢',
+  landmark: '★',
+  hazard: '▲',
+  origin: '◉'
+};
+
+/** @type {{ waypoints: Waypoint[], view: View }} */
+let state = {
+  waypoints: [],
+  view: { centerX: 0, centerY: 0, scale: 0.3 }
+};
+/** @type {BearingDirection} */
+let selectedDirection = 'from_ref_to_here';
+/** @type {string|null} */
+let selectedWaypointId = null;
+/** @type {string|null} */
+let editingId = null;
+/** @type {{x:number, y:number, cx:number, cy:number}|null} */
+let drag = null;
+
+/** @param {any} v */
+function sanitizeView(v) {
+  if (!v || typeof v !== 'object') return;
+  if (typeof v.scale === 'number' && isFinite(v.scale) && v.scale > 0) {
+    state.view.scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, v.scale));
+  }
+  if (typeof v.centerX === 'number' && isFinite(v.centerX)) state.view.centerX = v.centerX;
+  if (typeof v.centerY === 'number' && isFinite(v.centerY)) state.view.centerY = v.centerY;
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const loaded = JSON.parse(raw);
+      state.waypoints = Array.isArray(loaded.waypoints) ? loaded.waypoints : [];
+      sanitizeView(loaded.view);
+    }
+  } catch (e) { console.error('Load error:', e); }
+}
+
+/** @type {number|null} */
+let saveTimer = null;
+function save() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.error('Save error:', e); }
+}
+function debouncedSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { saveTimer = null; save(); }, 300);
+}
+window.addEventListener('beforeunload', () => { if (saveTimer) save(); });
+
+/** @returns {Point[]} */
+function getAllPoints() { return [LIFEPOD, ...state.waypoints]; }
+/** @param {string} id @returns {Point|undefined} */
+function findPoint(id) { return getAllPoints().find(p => p.id === id); }
+
+const COLORS = ['#4dd0e1', '#81c784', '#ff8a65', '#ba68c8', '#ffd54f', '#e57373', '#7986cb', '#a1887f', '#90a4ae', '#f06292'];
+function nextColor() {
+  const used = state.waypoints.map(w => w.color);
+  for (const c of COLORS) if (!used.includes(c)) return c;
+  return COLORS[state.waypoints.length % COLORS.length];
+}
+
+/**
+ * @param {string} refId
+ * @param {number} bearing
+ * @param {number} distance
+ * @param {BearingDirection} direction
+ * @returns {{x: number, y: number} | null}
+ */
+function computePosition(refId, bearing, distance, direction) {
+  const ref = findPoint(refId);
+  if (!ref) return null;
+  let plotBearing = bearing;
+  if (direction === 'from_here_to_ref') plotBearing = (bearing + 180) % 360;
+  const rad = plotBearing * Math.PI / 180;
+  return {
+    x: ref.x + distance * Math.sin(rad),
+    y: ref.y + distance * Math.cos(rad)
+  };
+}
+
+function recomputeAll() {
+  const computed = new Set([LIFEPOD_ID]);
+  let changed = true;
+  let passes = 0;
+  while (changed && passes < 100) {
+    changed = false;
+    passes++;
+    for (const wp of state.waypoints) {
+      if (computed.has(wp.id)) continue;
+      if (computed.has(wp.refId)) {
+        const pos = computePosition(wp.refId, wp.refBearing, wp.refDistance, wp.refDirection);
+        if (pos) { wp.x = pos.x; wp.y = pos.y; }
+        computed.add(wp.id);
+        changed = true;
+      }
+    }
+  }
+}
+
+/** @param {WaypointInput} data */
+function addWaypoint(data) {
+  const pos = computePosition(data.refId, data.bearing, data.distance, data.direction);
+  const wp = {
+    id: 'wp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    name: data.name,
+    x: pos.x, y: pos.y,
+    depth: data.depth,
+    notes: data.notes,
+    type: data.type,
+    color: nextColor(),
+    refId: data.refId,
+    refBearing: data.bearing,
+    refDistance: data.distance,
+    refDirection: data.direction
+  };
+  state.waypoints.push(wp);
+  save();
+  refresh();
+}
+
+/** @param {string} id @param {WaypointInput} data */
+function updateWaypoint(id, data) {
+  const wp = state.waypoints.find(w => w.id === id);
+  wp.name = data.name;
+  wp.depth = data.depth;
+  wp.notes = data.notes;
+  wp.type = data.type;
+  wp.refId = data.refId;
+  wp.refBearing = data.bearing;
+  wp.refDistance = data.distance;
+  wp.refDirection = data.direction;
+  const pos = computePosition(data.refId, data.bearing, data.distance, data.direction);
+  wp.x = pos.x;
+  wp.y = pos.y;
+  recomputeAll();
+  save();
+  refresh();
+}
+
+/** @param {string} id @returns {Set<string>} */
+function getDescendantIds(id) {
+  const desc = new Set();
+  let frontier = [id];
+  while (frontier.length) {
+    const next = [];
+    for (const wp of state.waypoints) {
+      if (frontier.includes(wp.refId) && !desc.has(wp.id) && wp.id !== id) {
+        desc.add(wp.id);
+        next.push(wp.id);
+      }
+    }
+    frontier = next;
+  }
+  return desc;
+}
+
+/**
+ * @param {{x:number,y:number}} from
+ * @param {{x:number,y:number}} to
+ * @returns {{bearing: number, distance: number}}
+ */
+function bearingFromTo(from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let bearing = Math.atan2(dx, dy) * 180 / Math.PI;
+  if (bearing < 0) bearing += 360;
+  return { bearing, distance: Math.hypot(dx, dy) };
+}
+
+/** @param {string} id */
+function deleteWaypoint(id) {
+  const target = state.waypoints.find(w => w.id === id);
+  const newRef = findPoint(target.refId);
+  for (const dep of state.waypoints) {
+    if (dep.refId !== id) continue;
+    const { bearing, distance } = bearingFromTo(newRef, dep);
+    dep.refId = newRef.id;
+    dep.refBearing = bearing;
+    dep.refDistance = distance;
+    dep.refDirection = 'from_ref_to_here';
+  }
+  state.waypoints = state.waypoints.filter(w => w.id !== id);
+  if (selectedWaypointId === id) selectedWaypointId = null;
+  if (editingId === id) exitEditMode();
+  recomputeAll();
+  save();
+  refresh();
+}
+
+/** @param {string} id */
+function enterEditMode(id) {
+  const wp = state.waypoints.find(w => w.id === id);
+  editingId = id;
+  $input('wp-name').value = wp.name;
+  $input('wp-bearing').value = String(wp.refBearing);
+  $input('wp-distance').value = String(wp.refDistance);
+  $select('wp-type').value = wp.type;
+  $input('wp-depth').value = wp.depth != null ? String(wp.depth) : '';
+  $textarea('wp-notes').value = wp.notes;
+  selectedDirection = wp.refDirection;
+  document.querySelectorAll('.radio-option').forEach(x => {
+    x.classList.toggle('active', x.getAttribute('data-dir') === selectedDirection);
+  });
+  $el('form-title').textContent = 'Edit Waypoint';
+  $el('edit-badge').style.display = 'inline-block';
+  $el('submit-btn').textContent = 'Update';
+  $el('submit-btn').classList.add('warn');
+  $el('cancel-btn').style.display = 'block';
+  $el('form-section').classList.add('editing');
+  renderRefDropdown();
+  $select('wp-ref').value = wp.refId;
+  updateDirectionLabels();
+  $el('sidebar').scrollTo({ top: 0, behavior: 'smooth' });
+  $input('wp-name').focus();
+}
+
+function exitEditMode() {
+  editingId = null;
+  $form('add-form').reset();
+  $el('form-title').textContent = 'Add Waypoint';
+  $el('edit-badge').style.display = 'none';
+  $el('submit-btn').textContent = 'Plot Waypoint';
+  $el('submit-btn').classList.remove('warn');
+  $el('cancel-btn').style.display = 'none';
+  $el('form-section').classList.remove('editing');
+  selectedDirection = 'from_ref_to_here';
+  document.querySelectorAll('.radio-option').forEach(x => {
+    x.classList.toggle('active', x.getAttribute('data-dir') === selectedDirection);
+  });
+  renderRefDropdown();
+  updateDirectionLabels();
+}
+
+/** @param {number} wx @param {number} wy */
+function worldToScreen(wx, wy) {
+  const svg = $svg('map');
+  const w = svg.clientWidth, h = svg.clientHeight;
+  return {
+    x: w/2 + (wx - state.view.centerX) * state.view.scale,
+    y: h/2 - (wy - state.view.centerY) * state.view.scale
+  };
+}
+/**
+ * @param {number} sx
+ * @param {number} sy
+ */
+function screenToWorld(sx, sy) {
+  const svg = $svg('map');
+  const w = svg.clientWidth, h = svg.clientHeight;
+  return {
+    x: state.view.centerX + (sx - w/2) / state.view.scale,
+    y: state.view.centerY - (sy - h/2) / state.view.scale
+  };
+}
+
+/** @param {string} s */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/** @param {string} s @param {number} n */
+function truncate(s, n) { return s.length > n ? s.slice(0, n-1) + '…' : s; }
+
+/**
+ * @param {PointType} type
+ * @param {number} cx
+ * @param {number} cy
+ * @param {number} r
+ * @param {string} color
+ * @param {string} dataId
+ */
+function renderShape(type, cx, cy, r, color, dataId) {
+  const stroke = '#050e1c';
+  const sw = 2;
+  const attrs = `fill="${color}" stroke="${stroke}" stroke-width="${sw}" class="wp-dot" data-id="${dataId}" style="cursor:pointer"`;
+
+  switch(type) {
+    case 'base': {
+      const s = r * 1.7;
+      return `<rect x="${cx-s/2}" y="${cy-s/2}" width="${s}" height="${s}" ${attrs}/>`;
+    }
+    case 'wreck': {
+      const d = r * 1.35;
+      return `<polygon points="${cx},${cy-d} ${cx+d},${cy} ${cx},${cy+d} ${cx-d},${cy}" ${attrs}/>`;
+    }
+    case 'cave': {
+      const t = r * 1.4;
+      return `<polygon points="${cx-t},${cy-t*0.7} ${cx+t},${cy-t*0.7} ${cx},${cy+t*0.9}" ${attrs}/>`;
+    }
+    case 'resource': {
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (i * 60 + 30) * Math.PI / 180;
+        pts.push(`${(cx + r*1.2*Math.cos(a)).toFixed(2)},${(cy + r*1.2*Math.sin(a)).toFixed(2)}`);
+      }
+      return `<polygon points="${pts.join(' ')}" ${attrs}/>`;
+    }
+    case 'landmark': {
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const rr = i % 2 === 0 ? r*1.55 : r*0.68;
+        const a = (i * 36 - 90) * Math.PI / 180;
+        pts.push(`${(cx + rr*Math.cos(a)).toFixed(2)},${(cy + rr*Math.sin(a)).toFixed(2)}`);
+      }
+      return `<polygon points="${pts.join(' ')}" ${attrs}/>`;
+    }
+    case 'hazard': {
+      const h = r * 1.5;
+      return `<polygon points="${cx},${cy-h} ${cx+h*0.866},${cy+h*0.55} ${cx-h*0.866},${cy+h*0.55}" ${attrs}/>`;
+    }
+    case 'origin':
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" ${attrs}/>`
+        + `<circle cx="${cx}" cy="${cy}" r="${r*0.4}" fill="${stroke}" pointer-events="none"/>`;
+    case 'other':
+    default:
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" ${attrs}/>`;
+  }
+}
+
+function renderMap() {
+  const svg = $svg('map');
+  const w = svg.clientWidth, h = svg.clientHeight;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  let html = '';
+
+  const targetSpacing = 80;
+  const rawMeters = targetSpacing / state.view.scale;
+  const niceSteps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  let gridMeters = niceSteps[0];
+  for (const s of niceSteps) {
+    if (s >= rawMeters) { gridMeters = s; break; }
+    gridMeters = s;
+  }
+
+  const topLeft = screenToWorld(0, 0);
+  const botRight = screenToWorld(w, h);
+  const startX = Math.floor(topLeft.x / gridMeters) * gridMeters;
+  const endX = Math.ceil(botRight.x / gridMeters) * gridMeters;
+  const startY = Math.floor(botRight.y / gridMeters) * gridMeters;
+  const endY = Math.ceil(topLeft.y / gridMeters) * gridMeters;
+
+  for (let x = startX; x <= endX; x += gridMeters) {
+    const p1 = worldToScreen(x, topLeft.y);
+    const p2 = worldToScreen(x, botRight.y);
+    const isAxis = Math.abs(x) < 0.01;
+    const color = isAxis ? '#4dd0e1' : '#1e3a5f';
+    const width = isAxis ? 1.5 : 0.5;
+    const opacity = isAxis ? 0.5 : 0.35;
+    html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="${width}" opacity="${opacity}"/>`;
+    if (!isAxis) {
+      html += `<text x="${p1.x + 3}" y="${h - 6}" fill="#4a6680" font-size="9" font-family="monospace">${x}</text>`;
+    }
+  }
+  for (let y = startY; y <= endY; y += gridMeters) {
+    const p1 = worldToScreen(topLeft.x, y);
+    const p2 = worldToScreen(botRight.x, y);
+    const isAxis = Math.abs(y) < 0.01;
+    const color = isAxis ? '#4dd0e1' : '#1e3a5f';
+    const width = isAxis ? 1.5 : 0.5;
+    const opacity = isAxis ? 0.5 : 0.35;
+    html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="${width}" opacity="${opacity}"/>`;
+    if (!isAxis) {
+      html += `<text x="4" y="${p1.y - 3}" fill="#4a6680" font-size="9" font-family="monospace">${y}</text>`;
+    }
+  }
+
+  const origin = worldToScreen(0, 0);
+  if (origin.x > -50 && origin.x < w + 50) {
+    html += `<text x="${origin.x + 6}" y="14" fill="#4dd0e1" font-size="11" font-weight="bold" font-family="monospace">N+</text>`;
+  }
+  if (origin.y > -20 && origin.y < h + 20) {
+    html += `<text x="${w - 30}" y="${origin.y - 4}" fill="#4dd0e1" font-size="11" font-weight="bold" font-family="monospace">E+</text>`;
+  }
+
+  for (const wp of state.waypoints) {
+    const ref = findPoint(wp.refId);
+    if (!ref) continue;
+    const p1 = worldToScreen(ref.x, ref.y);
+    const p2 = worldToScreen(wp.x, wp.y);
+    const isSel = wp.id === selectedWaypointId || wp.id === editingId;
+    html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${wp.color}" stroke-width="${isSel ? 1.5 : 1}" opacity="${isSel ? 0.6 : 0.25}" stroke-dasharray="4,4"/>`;
+  }
+
+  for (const p of getAllPoints()) {
+    const s = worldToScreen(p.x, p.y);
+    const isSelected = p.id === selectedWaypointId;
+    const isEditing = p.id === editingId;
+    const isLifepod = p.id === LIFEPOD_ID;
+    const r = isLifepod ? 8 : 7;
+    if (isSelected || isEditing) {
+      const ringColor = isEditing ? '#d4863a' : p.color;
+      html += `<circle cx="${s.x}" cy="${s.y}" r="${r + 7}" fill="none" stroke="${ringColor}" stroke-width="2" opacity="0.5"/>`;
+      html += `<circle cx="${s.x}" cy="${s.y}" r="${r + 12}" fill="none" stroke="${ringColor}" stroke-width="1" opacity="0.25"/>`;
+    }
+    const shapeType = isLifepod ? 'origin' : p.type;
+    html += renderShape(shapeType, s.x, s.y, r, p.color, p.id);
+    const labelText = isLifepod ? 'LIFEPOD' : p.name;
+    html += `<text x="${s.x + r + 6}" y="${s.y + 4}" fill="${p.color}" font-size="12" font-weight="600" style="pointer-events:none; paint-order: stroke; stroke: #050e1c; stroke-width: 3px; stroke-linejoin: round;">${escapeHtml(labelText)}</text>`;
+    if (p.depth != null && !isLifepod) {
+      html += `<text x="${s.x + r + 6}" y="${s.y + 17}" fill="#7ba6c8" font-size="10" font-family="monospace" style="pointer-events:none; paint-order: stroke; stroke: #050e1c; stroke-width: 3px; stroke-linejoin: round;">▼ ${p.depth}m</text>`;
+    }
+  }
+
+  const cx = w - 56, cy = 56, cr = 32;
+  html += `<g transform="translate(${cx}, ${cy})">
+    <circle r="${cr}" fill="#0a1929" stroke="#4dd0e1" stroke-width="1" opacity="0.9"/>
+    <text y="-${cr-10}" text-anchor="middle" fill="#4dd0e1" font-size="11" font-weight="bold">N</text>
+    <text x="${cr-8}" y="4" text-anchor="middle" fill="#7ba6c8" font-size="10">E</text>
+    <text y="${cr-2}" text-anchor="middle" fill="#7ba6c8" font-size="10">S</text>
+    <text x="-${cr-8}" y="4" text-anchor="middle" fill="#7ba6c8" font-size="10">W</text>
+    <line x1="0" y1="-${cr-14}" x2="0" y2="${cr-14}" stroke="#4dd0e1" stroke-width="0.5" opacity="0.4"/>
+    <line x1="-${cr-14}" y1="0" x2="${cr-14}" y2="0" stroke="#7ba6c8" stroke-width="0.5" opacity="0.4"/>
+    <polygon points="0,-${cr-16} -4,-${cr-22} 4,-${cr-22}" fill="#4dd0e1"/>
+  </g>`;
+
+  const sbPx = gridMeters * state.view.scale;
+  const sbX = 20, sbY = h - 24;
+  html += `<g>
+    <rect x="${sbX-6}" y="${sbY-18}" width="${sbPx+12}" height="26" fill="#0a1929" opacity="0.7" rx="3"/>
+    <line x1="${sbX}" y1="${sbY}" x2="${sbX + sbPx}" y2="${sbY}" stroke="#4dd0e1" stroke-width="2"/>
+    <line x1="${sbX}" y1="${sbY-4}" x2="${sbX}" y2="${sbY+4}" stroke="#4dd0e1" stroke-width="2"/>
+    <line x1="${sbX + sbPx}" y1="${sbY-4}" x2="${sbX + sbPx}" y2="${sbY+4}" stroke="#4dd0e1" stroke-width="2"/>
+    <text x="${sbX + sbPx/2}" y="${sbY - 6}" text-anchor="middle" fill="#4dd0e1" font-size="11" font-family="monospace" font-weight="600">${gridMeters}m</text>
+  </g>`;
+
+  svg.innerHTML = html;
+  svg.querySelectorAll('.wp-dot').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = el.getAttribute('data-id');
+      selectedWaypointId = (selectedWaypointId === id) ? null : id;
+      refresh();
+    });
+  });
+}
+
+function renderList() {
+  const ul = $el('waypoint-list');
+  if (state.waypoints.length === 0) {
+    ul.innerHTML = '<div class="empty">No waypoints yet.<br>Add one to begin charting.</div>';
+    return;
+  }
+  ul.innerHTML = state.waypoints.map(wp => {
+    const ref = findPoint(wp.refId);
+    const refName = ref ? ref.name : '(missing)';
+    const isSel = wp.id === selectedWaypointId;
+    const isEdit = wp.id === editingId;
+    const icon = TYPE_ICONS[wp.type];
+    // show actual direction with names
+    const fromName = wp.refDirection === 'from_here_to_ref' ? wp.name : refName;
+    const toName = wp.refDirection === 'from_here_to_ref' ? refName : wp.name;
+    return `
+      <div class="waypoint-item ${isSel ? 'selected' : ''} ${isEdit ? 'editing' : ''}" data-id="${wp.id}">
+        <div class="wp-name">
+          <span class="wp-icon" style="color:${wp.color};text-shadow:0 0 4px ${wp.color}">${icon}</span>
+          ${escapeHtml(wp.name)}
+        </div>
+        <div class="wp-meta">
+          ${wp.x.toFixed(0)}E, ${wp.y.toFixed(0)}N${wp.depth != null ? ' • ▼' + wp.depth + 'm' : ''}
+        </div>
+        <div class="wp-meta">
+          ${escapeHtml(fromName)} → ${escapeHtml(toName)}: ${wp.refBearing.toFixed(0).padStart(3,'0')}° / ${wp.refDistance.toFixed(0)}m
+        </div>
+        ${wp.notes ? `<div class="wp-meta wp-notes">${escapeHtml(wp.notes)}</div>` : ''}
+        <div class="wp-actions">
+          <button class="small" data-action="focus" data-id="${wp.id}">Focus</button>
+          <button class="small warn" data-action="edit" data-id="${wp.id}">Edit</button>
+          <button class="small danger" data-action="delete" data-id="${wp.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  ul.querySelectorAll('.waypoint-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (/** @type {Element} */ (e.target).tagName === 'BUTTON') return;
+      const id = el.getAttribute('data-id');
+      selectedWaypointId = (selectedWaypointId === id) ? null : id;
+      refresh();
+    });
+  });
+  ul.querySelectorAll('button[data-action]').forEach(b => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = b.getAttribute('data-id');
+      const action = b.getAttribute('data-action');
+      if (action === 'delete') {
+        const target = state.waypoints.find(w => w.id === id);
+        const depCount = state.waypoints.filter(w => w.refId === id).length;
+        let msg = 'Delete this waypoint?';
+        if (depCount > 0 && target) {
+          const parent = findPoint(target.refId);
+          const parentName = parent ? parent.name : 'Lifepod';
+          msg = `Delete this waypoint? ${depCount} dependent waypoint${depCount > 1 ? 's' : ''} will be re-anchored to ${parentName}. Positions are preserved, but the original bearing measurements will be replaced.`;
+        }
+        if (confirm(msg)) deleteWaypoint(id);
+      } else if (action === 'focus') {
+        const wp = findPoint(id);
+        if (wp) {
+          state.view.centerX = wp.x;
+          state.view.centerY = wp.y;
+          selectedWaypointId = id;
+          debouncedSave();
+          refresh();
+        }
+      } else if (action === 'edit') {
+        enterEditMode(id);
+      }
+    });
+  });
+}
+
+function renderRefDropdown() {
+  const sel = $select('wp-ref');
+  const cur = sel.value;
+  const excluded = new Set();
+  if (editingId) {
+    excluded.add(editingId);
+    for (const d of getDescendantIds(editingId)) excluded.add(d);
+  }
+  const candidates = getAllPoints().filter(p => !excluded.has(p.id));
+  sel.innerHTML = candidates.map(p =>
+    `<option value="${p.id}">${escapeHtml(p.name)}</option>`
+  ).join('');
+  if (cur && candidates.find(p => p.id === cur)) sel.value = cur;
+}
+
+function updateDirectionLabels() {
+  const nameInput = $input('wp-name').value.trim();
+  const name = nameInput ? truncate(nameInput, 14) : 'New';
+  const refSel = $select('wp-ref');
+  const ref = findPoint(refSel.value);
+  const refName = ref ? truncate(ref.name, 14) : 'Ref';
+  $el('dir-a').textContent = `${refName} → ${name}`;
+  $el('dir-b').textContent = `${name} → ${refName}`;
+}
+
+function refresh() {
+  renderMap();
+  renderList();
+  renderRefDropdown();
+  updateDirectionLabels();
+}
+
+function setupMapInteraction() {
+  const svg = $svg('map');
+  svg.addEventListener('mousedown', (e) => {
+    if (/** @type {Element} */ (e.target).classList.contains('wp-dot')) return;
+    drag = { x: e.clientX, y: e.clientY, cx: state.view.centerX, cy: state.view.centerY };
+    svg.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (drag) {
+      const dx = (e.clientX - drag.x) / state.view.scale;
+      const dy = (e.clientY - drag.y) / state.view.scale;
+      state.view.centerX = drag.cx - dx;
+      state.view.centerY = drag.cy + dy;
+      renderMap();
+    }
+    const rect = svg.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    if (sx >= 0 && sx <= rect.width && sy >= 0 && sy <= rect.height) {
+      const w = screenToWorld(sx, sy);
+      $el('coord-display').textContent =
+        `${w.x.toFixed(0)}E ${w.y.toFixed(0)}N`;
+    }
+  });
+  window.addEventListener('mouseup', () => {
+    if (drag) { drag = null; svg.classList.remove('dragging'); debouncedSave(); }
+  });
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+    const rect = svg.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const before = screenToWorld(sx, sy);
+    state.view.scale *= factor;
+    state.view.scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, state.view.scale));
+    const after = screenToWorld(sx, sy);
+    state.view.centerX += before.x - after.x;
+    state.view.centerY += before.y - after.y;
+    renderMap();
+    debouncedSave();
+  }, { passive: false });
+  window.addEventListener('resize', renderMap);
+
+  /** @type {{mode:'pan',x:number,y:number,cx:number,cy:number}|{mode:'pinch',startDist:number,startScale:number,midClientX:number,midClientY:number}|null} */
+  let touchState = null;
+  svg.addEventListener('touchstart', (e) => {
+    if (/** @type {Element} */ (e.target).classList.contains('wp-dot')) return;
+    if (e.touches.length === 1) {
+      e.preventDefault();
+      const t = e.touches[0];
+      touchState = { mode: 'pan', x: t.clientX, y: t.clientY, cx: state.view.centerX, cy: state.view.centerY };
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      const t1 = e.touches[0], t2 = e.touches[1];
+      touchState = {
+        mode: 'pinch',
+        startDist: Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY),
+        startScale: state.view.scale,
+        midClientX: (t1.clientX + t2.clientX) / 2,
+        midClientY: (t1.clientY + t2.clientY) / 2
+      };
+    }
+  }, { passive: false });
+
+  svg.addEventListener('touchmove', (e) => {
+    if (!touchState) return;
+    e.preventDefault();
+    if (touchState.mode === 'pan' && e.touches.length === 1) {
+      const t = e.touches[0];
+      const dx = (t.clientX - touchState.x) / state.view.scale;
+      const dy = (t.clientY - touchState.y) / state.view.scale;
+      state.view.centerX = touchState.cx - dx;
+      state.view.centerY = touchState.cy + dy;
+      renderMap();
+    } else if (touchState.mode === 'pinch' && e.touches.length === 2) {
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      if (touchState.startDist > 0) {
+        const rect = svg.getBoundingClientRect();
+        const sx = touchState.midClientX - rect.left;
+        const sy = touchState.midClientY - rect.top;
+        const before = screenToWorld(sx, sy);
+        state.view.scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, touchState.startScale * dist / touchState.startDist));
+        const after = screenToWorld(sx, sy);
+        state.view.centerX += before.x - after.x;
+        state.view.centerY += before.y - after.y;
+        renderMap();
+      }
+    }
+  }, { passive: false });
+
+  const endTouch = () => { if (touchState) { touchState = null; debouncedSave(); } };
+  svg.addEventListener('touchend', endTouch);
+  svg.addEventListener('touchcancel', endTouch);
+}
+
+/** @param {number} factor */
+function zoomBy(factor) {
+  state.view.scale *= factor;
+  state.view.scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, state.view.scale));
+  renderMap();
+  debouncedSave();
+}
+function zoomFit() {
+  const points = getAllPoints();
+  if (points.length <= 1) { zoomReset(); return; }
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for (const p of points) {
+    minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x);
+    minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y);
+  }
+  const spanX = Math.max(maxX-minX, 100);
+  const spanY = Math.max(maxY-minY, 100);
+  const svg = $svg('map');
+  const w = svg.clientWidth, h = svg.clientHeight;
+  const sx = w / (spanX * 1.4);
+  const sy = h / (spanY * 1.4);
+  state.view.scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, Math.min(sx, sy)));
+  state.view.centerX = (minX+maxX)/2;
+  state.view.centerY = (minY+maxY)/2;
+  renderMap(); debouncedSave();
+}
+function zoomReset() {
+  state.view.centerX = 0;
+  state.view.centerY = 0;
+  state.view.scale = 0.3;
+  renderMap(); debouncedSave();
+}
+
+function setupForm() {
+  document.querySelectorAll('.radio-option').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.radio-option').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      selectedDirection = /** @type {BearingDirection} */ (el.getAttribute('data-dir'));
+    });
+  });
+
+  $input('wp-name').addEventListener('input', updateDirectionLabels);
+  $select('wp-ref').addEventListener('change', updateDirectionLabels);
+
+  $form('add-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      name: $input('wp-name').value.trim(),
+      refId: $select('wp-ref').value,
+      direction: selectedDirection,
+      bearing: parseFloat($input('wp-bearing').value),
+      distance: parseFloat($input('wp-distance').value),
+      type: /** @type {WaypointType} */ ($select('wp-type').value),
+      depth: $input('wp-depth').value ? parseFloat($input('wp-depth').value) : null,
+      notes: $textarea('wp-notes').value.trim()
+    };
+    if (!data.name || isNaN(data.bearing) || isNaN(data.distance)) return;
+    if (editingId) {
+      updateWaypoint(editingId, data);
+      exitEditMode();
+    } else {
+      addWaypoint(data);
+      $input('wp-name').value = '';
+      $input('wp-bearing').value = '';
+      $input('wp-distance').value = '';
+      $input('wp-depth').value = '';
+      $textarea('wp-notes').value = '';
+      $select('wp-type').value = 'other';
+      $input('wp-name').focus();
+      updateDirectionLabels();
+    }
+  });
+
+  $el('cancel-btn').addEventListener('click', exitEditMode);
+  $el('zoom-in').addEventListener('click', () => zoomBy(1.3));
+  $el('zoom-out').addEventListener('click', () => zoomBy(1/1.3));
+  $el('zoom-fit').addEventListener('click', zoomFit);
+  $el('zoom-reset').addEventListener('click', zoomReset);
+  $el('export-btn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bathylog-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  $el('import-btn').addEventListener('click', () => {
+    $input('import-file').click();
+  });
+  $input('import-file').addEventListener('change', (e) => {
+    const target = /** @type {HTMLInputElement} */ (e.target);
+    const f = target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = (ev) => {
+      try {
+        const loaded = JSON.parse(/** @type {string} */ (ev.target.result));
+        if (Array.isArray(loaded.waypoints)) {
+          if (confirm('Import will replace your current map. Continue?')) {
+            state.waypoints = loaded.waypoints;
+            state.waypoints.forEach(w => { if (!w.type) w.type = 'other'; });
+            sanitizeView(loaded.view);
+            if (editingId) exitEditMode();
+            selectedWaypointId = null;
+            save(); refresh();
+          }
+        } else {
+          alert('Invalid file: no waypoints found');
+        }
+      } catch (err) { alert('Invalid JSON file'); }
+    };
+    r.readAsText(f);
+    target.value = '';
+  });
+  $el('clear-btn').addEventListener('click', () => {
+    if (confirm('Clear all waypoints? This cannot be undone.')) {
+      state.waypoints = [];
+      selectedWaypointId = null;
+      if (editingId) exitEditMode();
+      save(); refresh();
+    }
+  });
+}
+
+load();
+setupMapInteraction();
+setupForm();
+refresh();
+</script>
+</body>
+</html>
